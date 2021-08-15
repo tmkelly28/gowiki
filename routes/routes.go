@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 )
 
 // Page represents a wiki page stored in memory
@@ -14,10 +15,12 @@ type Page struct {
 
 func (p *Page) save() error {
 	filename := p.Title + ".txt"
-	return ioutil.WriteFile(filename, p.Body, 0600)
+	return ioutil.WriteFile(filepath.Join("data", filename), p.Body, 0600)
 }
 
-var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
+var viewPath = filepath.Join("tmpl", "view.html")
+var editPath = filepath.Join("tmpl", "edit.html")
+var templates = template.Must(template.ParseFiles(viewPath, editPath))
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 	err := templates.ExecuteTemplate(w, tmpl+".html", p)
@@ -29,7 +32,7 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 
 func loadPage(title string) (*Page, error) {
 	filename := title + ".txt"
-	body, err := ioutil.ReadFile(filename)
+	body, err := ioutil.ReadFile(filepath.Join("data", filename))
 	if err != nil {
 		return nil, err
 	}
