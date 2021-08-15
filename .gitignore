@@ -1,0 +1,4 @@
+*.txt
+tags
+tags.lock
+.DS_Store
