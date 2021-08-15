@@ -2,20 +2,13 @@ package main
 
 import (
 	"errors"
-	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"regexp"
+
+	"github.com/tmkelly28/gowiki/routes"
 )
 
-// Page represents a wiki page stored in memory
-type Page struct {
-	Title string
-	Body  []byte
-}
-
-var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
 var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
 
 func getTitle(w http.ResponseWriter, r *http.Request) (string, error) {
@@ -26,57 +19,6 @@ func getTitle(w http.ResponseWriter, r *http.Request) (string, error) {
 	}
 
 	return m[2], nil
-}
-
-func (p *Page) save() error {
-	filename := p.Title + ".txt"
-	return ioutil.WriteFile(filename, p.Body, 0600)
-}
-
-func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
-	body, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	return &Page{Title: title, Body: body}, nil
-}
-
-func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	err := templates.ExecuteTemplate(w, tmpl+".html", p)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
-		return
-	}
-	renderTemplate(w, "view", p)
-}
-
-func editHandler(w http.ResponseWriter, r *http.Request, title string) {
-	p, err := loadPage(title)
-	if err != nil {
-		p = &Page{Title: title}
-	}
-
-	renderTemplate(w, "edit", p)
-}
-
-func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
-	body := r.FormValue("body")
-	p := &Page{Title: title, Body: []byte(body)}
-	err := p.save()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/view/"+title, http.StatusFound)
 }
 
 func makeHandler(handler func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
@@ -90,8 +32,8 @@ func makeHandler(handler func(http.ResponseWriter, *http.Request, string)) http.
 }
 
 func main() {
-	http.HandleFunc("/view/", makeHandler(viewHandler))
-	http.HandleFunc("/edit/", makeHandler(editHandler))
-	http.HandleFunc("/save/", makeHandler(saveHandler))
+	http.HandleFunc("/view/", makeHandler(routes.ViewHandler))
+	http.HandleFunc("/edit/", makeHandler(routes.EditHandler))
+	http.HandleFunc("/save/", makeHandler(routes.SaveHandler))
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
